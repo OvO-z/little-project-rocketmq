@@ -13,16 +13,24 @@ dubbo:
     base-packages: com.ovo.little.project.rocketmq
 
 
-# 登录消息topic
+
 rocketmq:
   nameserv:
     address: 101.132.253.144:9867 # 当前部署的服务器的外网ip地址 TODO 每次重新部署时修改
+  # 登录消息topic
   login:
     topic: login_notify_topic
     producer:
       group: login_notify_producer_group
     consumer:
       group: login_notify_consumer_group
+  # 酒店房间数据更新topic
+  hotelRoom:
+    topic: hotel_room_topic
+    producer:
+      group: hotel_room_producer_group
+    consumer:
+      group: hotel_room_consumer_group
 
 first:
   login:
