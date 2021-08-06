@@ -1,0 +1,31 @@
+server:
+  port: 8088
+spring:
+  application:
+    name: little-project-rocketmq
+  profiles:
+    active: dev
+
+dubbo:
+  cloud:
+    subscribed-services: little-project-redis,little-project-mysql,little-project-message
+  scan:
+    base-packages: com.ovo.little.project.rocketmq
+
+
+# 登录消息topic
+rocketmq:
+  nameserv:
+    address: 101.132.253.144:9867 # 当前部署的服务器的外网ip地址 TODO 每次重新部署时修改
+  login:
+    topic: login_notify_topic
+    producer:
+      group: login_notify_producer_group
+    consumer:
+      group: login_notify_consumer_group
+
+first:
+  login:
+    couponId: 738
+    coupon:
+      day: 30
