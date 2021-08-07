@@ -22,5 +22,12 @@ public interface CouponService {
                           Integer couponConfigId,
                           Integer validDay,
                           Integer sourceOrderId, String phoneNumber);
-
+    /**
+     * 使用优惠券
+     *
+     * @param orderId     订单id
+     * @param couponId    优惠券id
+     * @param phoneNumber 用户手机号
+     */
+    void usedCoupon(Integer orderId, Integer couponId, String phoneNumber);
 }

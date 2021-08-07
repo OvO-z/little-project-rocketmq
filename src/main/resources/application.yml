@@ -31,7 +31,13 @@ rocketmq:
       group: hotel_room_producer_group
     consumer:
       group: hotel_room_consumer_group
-
+  # 订单数据更新topic
+  order:
+    topic: order_topic
+    producer:
+      group: order_producer_group
+    consumer:
+      group: order_consumer_group
 first:
   login:
     couponId: 738
