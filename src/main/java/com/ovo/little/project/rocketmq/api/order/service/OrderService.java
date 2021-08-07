@@ -2,6 +2,7 @@ package com.ovo.little.project.rocketmq.api.order.service;
 
 import com.ovo.little.project.rocketmq.api.order.dto.CreateOrderResponseDTO;
 import com.ovo.little.project.rocketmq.api.order.dto.OrderInfoDTO;
+import com.ovo.little.project.rocketmq.api.order.enums.OrderStatusEnum;
 import com.ruyuan.little.project.common.dto.CommonResponse;
 
 /**
@@ -51,4 +52,22 @@ public interface OrderService {
      * @param phoneNumber 手机号
      */
     void informFinishedOrder(String orderNo, String phoneNumber);
+
+    /**
+     * 更新订单状态
+     *
+     * @param orderNo         订单号
+     * @param orderStatusEnum 订单状态
+     * @param phoneNumber     手机号
+     */
+    void updateOrderStatus(String orderNo, OrderStatusEnum orderStatusEnum, String phoneNumber);
+
+    /**
+     * 查询订单状态
+     *
+     * @param orderNo     订单号
+     * @param phoneNumber 手机号
+     * @return 结果
+     */
+    Integer getOrderStatus(String orderNo, String phoneNumber);
 }

@@ -38,6 +38,7 @@ rocketmq:
       group: order_producer_group
     consumer:
       group: order_consumer_group
+    # 未支付订单延时消息topic
     delay:
       topic: order_delay_topic
       level: 5
@@ -45,6 +46,13 @@ rocketmq:
         group: order_delay_producer_group
       consumer:
         group: order_delay_consumer_group
+    # 订单重要权益分发事务消息
+    finished:
+      topic: order_finished_topic
+      producer:
+        group: order_finished_producer_group
+      consumer:
+        group: order_finished_consumer_group
 first:
   login:
     couponId: 738

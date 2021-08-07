@@ -21,13 +21,18 @@ import com.ruyuan.little.project.mysql.dto.MysqlRequestDTO;
 import com.ruyuan.little.project.redis.api.RedisApi;
 import org.apache.dubbo.config.annotation.Reference;
 import org.apache.dubbo.config.annotation.Service;
+import org.apache.rocketmq.client.exception.MQClientException;
+import org.apache.rocketmq.client.producer.TransactionMQProducer;
+import org.apache.rocketmq.common.message.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -72,6 +77,20 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderEventInformManager orderEventInformManager;
+
+    /**
+     * 完成定时事务消息topic
+     */
+    @Value("${rocketmq.order.finished.topic}")
+    private String orderFinishedTopic;
+
+    /**
+     * 完成订单 下发权益消息事务消息
+     */
+    @Autowired
+    @Qualifier(value = "orderFinishedTransactionMqProducer")
+    private TransactionMQProducer orderFinishedTransactionMqProducer;
+
 
     /**
      * mysql dubbo服务
@@ -197,25 +216,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public void informFinishedOrder(String orderNo, String phoneNumber) {
         // 订单信息
-        OrderInfoDTO orderInfoDTO = this.getOrderInfo(orderNo, phoneNumber);
+        OrderInfoDTO orderInfo = this.getOrderInfo(orderNo, phoneNumber);
+        Message msg = new Message(orderFinishedTopic, JSON.toJSONString(orderInfo).getBytes(StandardCharsets.UTF_8));
         try {
-            // 修改订单的状态
-            this.updateOrderStatus(orderNo, OrderStatusEnum.FINISHED, phoneNumber);
+            // 发送prepare消息
+            orderFinishedTransactionMqProducer.sendMessageInTransaction(msg, null);
 
-            // 下发优惠券
-            couponService.distributeCoupon(orderInfoDTO.getBeid(),
-                    orderInfoDTO.getUserId(),
-                    orderFinishedCouponId,
-                    orderFinishedCouponDay,
-                    orderInfoDTO.getId(),
-                    phoneNumber);
-
-            // 发送确认通知
-            orderEventInformManager.informOrderFinishEvent(orderInfoDTO);
-
-        } catch (Exception e) {
-            // TODO  保证主要权益的发放需要重试
-            LOGGER.info("finished order fail orderNo:{}", orderNo);
+        } catch (MQClientException e) {
+            LOGGER.info("finished order send half message fail error:{}", e);
+            // TODO 通知酒店服务人员重新进行订单结束
         }
 
     }
@@ -227,6 +236,7 @@ public class OrderServiceImpl implements OrderService {
      * @param orderStatusEnum 订单状态
      * @param phoneNumber     手机号
      */
+    @Override
     public void updateOrderStatus(String orderNo, OrderStatusEnum orderStatusEnum, String phoneNumber) {
         MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
         mysqlRequestDTO.setSql("update t_shop_order set status = ? where ordersn = ?");
@@ -240,6 +250,25 @@ public class OrderServiceImpl implements OrderService {
         LOGGER.info("start update order status param:{}", JSON.toJSONString(params));
         CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
         LOGGER.info("end update order status param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
+    }
+
+    @Override
+    public Integer getOrderStatus(String orderNo, String phoneNumber) {
+        MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
+        mysqlRequestDTO.setSql("select status from  t_shop_order where ordersn = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(orderNo);
+        mysqlRequestDTO.setParams(params);
+        mysqlRequestDTO.setPhoneNumber(phoneNumber);
+        mysqlRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        LOGGER.info("start select order status param:{}", JSON.toJSONString(params));
+        CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
+        LOGGER.info("end select order status param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
+        if (Objects.equals(response.getCode(), ErrorCodeEnum.SUCCESS.getCode())) {
+            return response.getData();
+        }
+        return null;
     }
 
     /**

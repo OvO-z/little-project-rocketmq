@@ -25,4 +25,8 @@ public class RedisKeyConstant {
      * 订单支付和取消分布式锁key
      */
     public static final String ORDER_LOCK_KEY_PREFIX = "little:project:orderLock:";
+    /**
+     * 完成订单后重复消费 保证幂等key前缀
+     */
+    public static final String ORDER_FINISHED_DUPLICATION_KEY_PREFIX = "little:project:orderFinishedDuplication:";
 }
