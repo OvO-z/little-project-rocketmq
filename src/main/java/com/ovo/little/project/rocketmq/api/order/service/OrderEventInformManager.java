@@ -28,4 +28,11 @@ public interface OrderEventInformManager {
      * @param orderInfoDTO 订单信息
      */
     void informPayOrderEvent(OrderInfoDTO orderInfoDTO);
+
+    /**
+     * 入住成功事件
+     *
+     * @param orderInfoDTO 订单信息
+     */
+    void informConfirmOrderEvent(OrderInfoDTO orderInfoDTO);
 }

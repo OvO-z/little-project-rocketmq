@@ -35,4 +35,12 @@ public interface OrderService {
      * @return 结果 订单id
      */
     Integer informPayOrderSuccessed(String orderNo, String phoneNumber);
+
+    /**
+     * 入住
+     *
+     * @param orderNo     订单号
+     * @param phoneNumber 手机号
+     */
+    void informConfirmOrder(String orderNo, String phoneNumber);
 }

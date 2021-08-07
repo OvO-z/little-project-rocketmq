@@ -171,6 +171,38 @@ public class OrderServiceImpl implements OrderService {
         return orderInfo != null ? orderInfo.getId() : null;
     }
 
+    @Override
+    public void informConfirmOrder(String orderNo, String phoneNumber) {
+        // TODO 可以通过状态模式来校验订单的流转和保存订单操作日志
+        // 修改订单的状态
+        this.updateOrderStatus(orderNo, OrderStatusEnum.CONFIRM, phoneNumber);
+
+        // 发送确认通知
+        orderEventInformManager.informConfirmOrderEvent(this.getOrderInfo(orderNo, phoneNumber));
+    }
+
+    /**
+     * 更新订单状态
+     *
+     * @param orderNo         订单号
+     * @param orderStatusEnum 订单状态
+     * @param phoneNumber     手机号
+     */
+    public void updateOrderStatus(String orderNo, OrderStatusEnum orderStatusEnum, String phoneNumber) {
+        MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
+        mysqlRequestDTO.setSql("update t_shop_order set status = ? where ordersn = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(orderStatusEnum.getStatus());
+        params.add(orderNo);
+        mysqlRequestDTO.setParams(params);
+        mysqlRequestDTO.setPhoneNumber(phoneNumber);
+        mysqlRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        LOGGER.info("start update order status param:{}", JSON.toJSONString(params));
+        CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
+        LOGGER.info("end update order status param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
+    }
+
     /**
      * 更新订单状态和支付时间
      *
