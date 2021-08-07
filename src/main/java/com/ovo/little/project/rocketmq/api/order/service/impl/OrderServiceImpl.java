@@ -24,6 +24,7 @@ import org.apache.dubbo.config.annotation.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -56,6 +57,18 @@ public class OrderServiceImpl implements OrderService {
      */
     @Autowired
     private CouponService couponService;
+
+    /**
+     * 退房完成下发的优惠券id
+     */
+    @Value("${order.finished.couponId}")
+    private Integer orderFinishedCouponId;
+
+    /**
+     * 退房完成下发的优惠券有效天数
+     */
+    @Value("${order.finished.coupon.day}")
+    private Integer orderFinishedCouponDay;
 
     @Autowired
     private OrderEventInformManager orderEventInformManager;
@@ -179,6 +192,32 @@ public class OrderServiceImpl implements OrderService {
 
         // 发送确认通知
         orderEventInformManager.informConfirmOrderEvent(this.getOrderInfo(orderNo, phoneNumber));
+    }
+
+    @Override
+    public void informFinishedOrder(String orderNo, String phoneNumber) {
+        // 订单信息
+        OrderInfoDTO orderInfoDTO = this.getOrderInfo(orderNo, phoneNumber);
+        try {
+            // 修改订单的状态
+            this.updateOrderStatus(orderNo, OrderStatusEnum.FINISHED, phoneNumber);
+
+            // 下发优惠券
+            couponService.distributeCoupon(orderInfoDTO.getBeid(),
+                    orderInfoDTO.getUserId(),
+                    orderFinishedCouponId,
+                    orderFinishedCouponDay,
+                    orderInfoDTO.getId(),
+                    phoneNumber);
+
+            // 发送确认通知
+            orderEventInformManager.informOrderFinishEvent(orderInfoDTO);
+
+        } catch (Exception e) {
+            // TODO  保证主要权益的发放需要重试
+            LOGGER.info("finished order fail orderNo:{}", orderNo);
+        }
+
     }
 
     /**

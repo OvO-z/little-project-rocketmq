@@ -16,4 +16,5 @@ public interface AdminOrderService {
      */
     CommonResponse confirmOrder(String orderNo, String phoneNumber);
 
+    CommonResponse finishedOrder(String orderNo, String phoneNumber);
 }

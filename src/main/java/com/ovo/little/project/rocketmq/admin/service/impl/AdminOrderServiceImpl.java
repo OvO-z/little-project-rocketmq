@@ -23,4 +23,10 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         orderService.informConfirmOrder(orderNo, phoneNumber);
         return CommonResponse.success();
     }
+
+    @Override
+    public CommonResponse finishedOrder(String orderNo, String phoneNumber) {
+        orderService.informFinishedOrder(orderNo, phoneNumber);
+        return CommonResponse.success();
+    }
 }

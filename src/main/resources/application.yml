@@ -50,3 +50,8 @@ first:
     couponId: 738
     coupon:
       day: 30
+order:
+  finished:
+    couponId: 739
+    coupon:
+      day: 90
