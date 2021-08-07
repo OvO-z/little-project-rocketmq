@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Objects;
  * @date 2021/8/6
  */
 
+@Component
 public class FirstLoginMessageListener implements MessageListenerConcurrently {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FirstLoginMessageListener.class);
@@ -69,6 +71,8 @@ public class FirstLoginMessageListener implements MessageListenerConcurrently {
 
                 // 通过redis保证幂等
                 CommonResponse<Boolean> response = redisApi.setnx(RedisKeyConstant.FIRST_LOGIN_DUPLICATION_KEY_PREFIX + userId, String.valueOf(userId), phoneNumber, LittleProjectTypeEnum.ROCKETMQ);
+
+
 
                 if (Objects.equals(response.getCode(), ErrorCodeEnum.FAIL.getCode())) {
                     // 请求redis dubbo接口失败

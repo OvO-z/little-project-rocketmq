@@ -17,6 +17,7 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.Objects;
  * @author QAQ
  * @date 2021/8/7
  */
+@Component
 public class HotelRoomUpdateMessageListener implements MessageListenerConcurrently {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HotelRoomUpdateMessageListener.class);

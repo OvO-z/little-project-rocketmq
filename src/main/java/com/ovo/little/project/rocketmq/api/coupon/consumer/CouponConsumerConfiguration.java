@@ -6,14 +6,15 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 /**
  * @author QAQ
  * @date 2021/8/6
  */
 
-
-public class CouponConsumer {
+@Configuration
+public class CouponConsumerConfiguration {
 
     @Value("${rocketmq.namesrv.address}")
     private String namesrvAddress;
@@ -27,11 +28,11 @@ public class CouponConsumer {
     @Value("${rocketmq.login.consumer.group}")
     private String loginConsumerGroup;
 
-    @Bean("loginConsumer")
+    @Bean(value = "loginConsumer")
     public DefaultMQPushConsumer loginConsumer(@Qualifier("firstLoginMessageListener")FirstLoginMessageListener firstLoginMessageListener) throws MQClientException {
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer(loginConsumerGroup);
         consumer.setNamesrvAddr(namesrvAddress);
-        consumer.subscribe(loginTopic, "");
+        consumer.subscribe(loginTopic, "*");
         consumer.setMessageListener(firstLoginMessageListener);
         consumer.start();
         return consumer;

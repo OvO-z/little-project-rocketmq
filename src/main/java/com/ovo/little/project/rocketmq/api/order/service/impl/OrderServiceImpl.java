@@ -84,6 +84,9 @@ public class OrderServiceImpl implements OrderService {
         // 保存订单商品数据
         this.saveOrderItemInfo(orderInfoDTO);
 
+        // 调用优惠券服务更新优惠券状态
+        couponService.usedCoupon(orderInfoDTO.getId(), orderInfoDTO.getCouponId(), orderInfoDTO.getPhoneNumber());
+
         // 发送订单消息到mq中
         orderEventInformManager.informCreateOrderEvent(orderInfoDTO);
 
