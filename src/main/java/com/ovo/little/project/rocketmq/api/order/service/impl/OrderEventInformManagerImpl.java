@@ -58,15 +58,15 @@ public class OrderEventInformManagerImpl implements OrderEventInformManager {
     public void informCreateOrderEvent(OrderInfoDTO orderInfoDTO) {
         // 订单状态顺序消息
         this.sendOrderMessage(MessageTypeEnum.WX_CREATE_ORDER, orderInfoDTO);
+
+        // 订单超时延时消息
+        this.sendOrderDelayMessage(orderInfoDTO);
     }
 
     @Override
     public void informCancelOrderEvent(OrderInfoDTO orderInfoDTO) {
         this.sendOrderMessage(MessageTypeEnum.WX_CANCEL_ORDER,
                 orderInfoDTO);
-
-        // 订单超时延时消息
-        this.sendOrderDelayMessage(orderInfoDTO);
     }
 
     /**
