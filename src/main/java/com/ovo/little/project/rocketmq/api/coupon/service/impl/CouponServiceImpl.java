@@ -103,4 +103,27 @@ public class CouponServiceImpl implements CouponService {
         CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
         LOGGER.info("end used coupon param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
     }
+
+    @Override
+    public void backUsedCoupon(Integer couponId, String phoneNumber) {
+        MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
+        mysqlRequestDTO.setSql("UPDATE t_coupon_user "
+                + "SET "
+                + "used_time = '0000-00-00 00:00:00',"
+                + "used_order_id = 0,"
+                + "used = ? "
+                + "WHERE "
+                + "id = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(CouponUsedStatusEnum.NOT_USED.getStatus());
+        params.add(couponId);
+        mysqlRequestDTO.setParams(params);
+        mysqlRequestDTO.setPhoneNumber(phoneNumber);
+        mysqlRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        // 修改优惠券状态
+        LOGGER.info("start back used coupon param:{}", JSON.toJSONString(params));
+        CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
+        LOGGER.info("end back used coupon param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
+    }
 }

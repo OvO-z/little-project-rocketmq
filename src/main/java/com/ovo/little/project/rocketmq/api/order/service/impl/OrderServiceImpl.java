@@ -96,6 +96,153 @@ public class OrderServiceImpl implements OrderService {
         return CommonResponse.success(createOrderResponseDTO);
     }
 
+    @Override
+    public CommonResponse cancelOrder(String orderNo, String phoneNumber) {
+        // 校验订单的状态是否可以取消
+        // TODO 可以通过状态模式来优化订单的流转和保存订单操作日志
+        OrderInfoDTO orderInfo = this.getOrderInfo(orderNo, phoneNumber);
+
+        // TODO 检查时并发问题可以通过分布式锁来解决
+        if (!Objects.equals(orderInfo.getStatus(), OrderStatusEnum.WAITING_FOR_PAY.getStatus())) {
+            throw new BusinessException("订单不是未支付状态不能取消,订单号:" + orderNo);
+        }
+
+        // 更新订单状态
+        long cancelTime = System.currentTimeMillis() / 1000;
+        this.updateOrderStatusAndCancelTime(orderNo, cancelTime, phoneNumber);
+
+        // 判断订单是否使用优惠券 进行优惠券退回
+        if (!Objects.isNull(orderInfo.getCouponId())) {
+            // 退回优惠券
+            couponService.backUsedCoupon(orderInfo.getCouponId(), phoneNumber);
+        }
+
+        // 发送通知消息
+        orderInfo.setCancelTime((int) cancelTime);
+        orderEventInformManager.informCancelOrderEvent(orderInfo);
+
+        return CommonResponse.success();
+    }
+
+    /**
+     * 更新订单状态和取消时间  默认更新优惠券id和优惠券金额
+     *
+     * @param orderNo     订单号
+     * @param cancelTime  取消时间
+     * @param phoneNumber 手机号
+     */
+    private void updateOrderStatusAndCancelTime(String orderNo, long cancelTime, String phoneNumber) {
+        MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
+        mysqlRequestDTO.setSql("update t_shop_order set status = ?,cancel_time = ?,coupon_id = null,coupon_money = null where ordersn = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(OrderStatusEnum.CANCELED.getStatus());
+        params.add(cancelTime);
+        params.add(orderNo);
+        mysqlRequestDTO.setParams(params);
+        mysqlRequestDTO.setPhoneNumber(phoneNumber);
+        mysqlRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        LOGGER.info("start update order status param:{}", JSON.toJSONString(params));
+        CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
+        LOGGER.info("end update order status param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
+    }
+
+    /**
+     * 查询订单详情
+     *
+     * @param orderNo 订单编号
+     * @return 订单信息
+     */
+    private OrderInfoDTO getOrderInfo(String orderNo, String phoneNumber) {
+        MysqlRequestDTO orderInfoRequestDTO = new MysqlRequestDTO();
+        orderInfoRequestDTO.setSql("select  "
+                + "id, "
+                + "address_realname , "
+                + "status , "
+                + "remark , "
+                + "createtime , "
+                + "uid , "
+                + "beid , "
+                + "address_mobile, "
+                + "coupon_id "
+                + " from t_shop_order "
+                + " where "
+                + "ordersn = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(orderNo);
+        orderInfoRequestDTO.setParams(params);
+        orderInfoRequestDTO.setPhoneNumber(phoneNumber);
+        orderInfoRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+        LOGGER.info("start query order info param:{}", JSON.toJSONString(orderInfoRequestDTO));
+        CommonResponse<List<Map<String, Object>>> orderInfoResponse = mysqlApi.query(orderInfoRequestDTO);
+        LOGGER.info("end query order info param:{}, response:{}", JSON.toJSONString(orderInfoRequestDTO), JSON.toJSONString(orderInfoResponse));
+        if (Objects.equals(orderInfoResponse.getCode(), ErrorCodeEnum.SUCCESS.getCode())) {
+            if (!CollectionUtils.isEmpty(orderInfoResponse.getData())) {
+                Map<String, Object> orderMap = orderInfoResponse.getData().get(0);
+                // 订单信息
+                OrderInfoDTO orderInfoDTO = new OrderInfoDTO();
+                orderInfoDTO.setId(Integer.valueOf(String.valueOf(orderMap.get("id"))));
+                orderInfoDTO.setPhoneNumber(phoneNumber);
+                orderInfoDTO.setName(String.valueOf(orderMap.get("address_mobile")));
+                orderInfoDTO.setRemark(String.valueOf(orderMap.get("remark")));
+                orderInfoDTO.setCreateTime(Integer.valueOf(String.valueOf(orderMap.get("createtime"))));
+                orderInfoDTO.setStatus(Integer.valueOf(String.valueOf(orderMap.get("status"))));
+                Object couponId = orderMap.get("coupon_id");
+                if (!Objects.isNull(couponId)) {
+                    orderInfoDTO.setCouponId(Integer.valueOf(String.valueOf(couponId)));
+                }
+                orderInfoDTO.setUserId(Integer.valueOf(String.valueOf(orderMap.get("uid"))));
+                orderInfoDTO.setBeid(Integer.valueOf(String.valueOf(orderMap.get("beid"))));
+                orderInfoDTO.setOrderNo(orderNo);
+
+                // 查询订单房间
+                orderInfoDTO.setOrderItem(this.getOrderItem(orderInfoDTO.getId(), phoneNumber));
+                return orderInfoDTO;
+            }
+        }
+        throw new BusinessException(OrderBusinessErrorCodeEnum.ORDER_NO_EXIST.getMsg());
+    }
+
+    /**
+     * 查询订单房间信息
+     *
+     * @param orderId     订单号
+     * @param phoneNumber 手机号
+     * @return 房间信息
+     */
+    private OrderItemDTO getOrderItem(Integer orderId, String phoneNumber) {
+        MysqlRequestDTO orderItemRequestDTO = new MysqlRequestDTO();
+        orderItemRequestDTO.setSql("select  "
+                + "goodsid , "
+                + "title , "
+                + "price , "
+                + "total  "
+                + " from t_shop_order_goods "
+                + " where orderid = ?");
+        orderItemRequestDTO.setParams(Collections.singletonList(orderId));
+        orderItemRequestDTO.setPhoneNumber(phoneNumber);
+        orderItemRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        LOGGER.info("start query order item param:{}", JSON.toJSONString(orderItemRequestDTO));
+        CommonResponse<List<Map<String, Object>>> orderItemResponse = mysqlApi.query(orderItemRequestDTO);
+        LOGGER.info("end query order item param:{}, response:{}", JSON.toJSONString(orderItemRequestDTO), JSON.toJSONString(orderItemResponse));
+
+        if (Objects.equals(orderItemResponse.getCode(), ErrorCodeEnum.SUCCESS.getCode())) {
+            if (!CollectionUtils.isEmpty(orderItemResponse.getData())) {
+                Map<String, Object> orderItemMap = orderItemResponse.getData().get(0);
+                // 订单信息
+                OrderItemDTO orderItemDTO = new OrderItemDTO();
+                orderItemDTO.setRoomId(Integer.valueOf(String.valueOf(orderItemMap.get("goodsid"))));
+                orderItemDTO.setTitle(String.valueOf(orderItemMap.get("title")));
+                orderItemDTO.setPrice((BigDecimal) orderItemMap.get("price"));
+                orderItemDTO.setTotal(Integer.valueOf(String.valueOf(orderItemMap.get("total"))));
+
+                return orderItemDTO;
+            }
+        }
+        return null;
+    }
+
     /**
      * 保存订单商品数据
      *

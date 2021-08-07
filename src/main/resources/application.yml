@@ -38,6 +38,13 @@ rocketmq:
       group: order_producer_group
     consumer:
       group: order_consumer_group
+    delay:
+      topic: order_delay_topic
+      level: 9
+      producer:
+        group: order_delay_producer_group
+      consumer:
+        group: order_delay_consumer_group
 first:
   login:
     couponId: 738

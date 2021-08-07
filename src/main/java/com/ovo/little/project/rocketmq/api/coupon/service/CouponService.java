@@ -30,4 +30,12 @@ public interface CouponService {
      * @param phoneNumber 用户手机号
      */
     void usedCoupon(Integer orderId, Integer couponId, String phoneNumber);
+
+    /**
+     * 退回已使用的优惠券
+     *
+     * @param couponId    优惠券id
+     * @param phoneNumber 手机号
+     */
+    void backUsedCoupon(Integer couponId, String phoneNumber);
 }

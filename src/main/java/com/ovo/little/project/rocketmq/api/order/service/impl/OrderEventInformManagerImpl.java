@@ -42,10 +42,31 @@ public class OrderEventInformManagerImpl implements OrderEventInformManager {
     @Value("${rocketmq.order.topic}")
     private String orderTopic;
 
+    /**
+     * 订单延时消息topic
+     */
+    @Value("${rocketmq.order.delay.topic}")
+    private String orderDelayTopic;
+
+    /**
+     * 订单延时消息等级
+     */
+    @Value("${rocketmq.order.delay.level}")
+    private Integer orderDelayLevel;
+
     @Override
     public void informCreateOrderEvent(OrderInfoDTO orderInfoDTO) {
         // 订单状态顺序消息
         this.sendOrderMessage(MessageTypeEnum.WX_CREATE_ORDER, orderInfoDTO);
+    }
+
+    @Override
+    public void informCancelOrderEvent(OrderInfoDTO orderInfoDTO) {
+        this.sendOrderMessage(MessageTypeEnum.WX_CANCEL_ORDER,
+                orderInfoDTO);
+
+        // 订单超时延时消息
+        this.sendOrderDelayMessage(orderInfoDTO);
     }
 
     /**
@@ -71,6 +92,30 @@ public class OrderEventInformManagerImpl implements OrderEventInformManager {
         } catch (Exception e) {
             // 发送订单消息失败
             LOGGER.error("send order message fail,error message:{}", e.getMessage());
+        }
+    }
+
+    /**
+     * 订单延时消息
+     *
+     * @param orderInfoDTO 订单信息
+     */
+    private void sendOrderDelayMessage(OrderInfoDTO orderInfoDTO) {
+        // 发送订单付款的延时消息
+        Message message = new Message();
+        message.setTopic(orderDelayTopic);
+        // 30分钟
+        // private String messageDelayLevel = "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h";
+        // 延时等级从1开始 TODO 根据测试情况修改数据 5分钟
+        message.setDelayTimeLevel(orderDelayLevel);
+        // 内容订单号
+        message.setBody(JSON.toJSONString(orderInfoDTO).getBytes(StandardCharsets.UTF_8));
+        try {
+            orderMqProducer.send(message);
+            LOGGER.info("send order delay pay message finished orderNo:{} delayTimeLevel:{}", orderInfoDTO.getOrderNo(), orderDelayLevel);
+        } catch (Exception e) {
+            // 发送订单支付延时消息失败
+            LOGGER.error("send order delay message fail,error message:{}", e.getMessage());
         }
     }
 }

@@ -17,4 +17,13 @@ public interface OrderService {
      * @return 结果
      */
     CommonResponse<CreateOrderResponseDTO> createOrder(OrderInfoDTO orderInfoDTO);
+
+    /**
+     * 取消订单
+     *
+     * @param orderNo     订单编号
+     * @param phoneNumber 手机号
+     * @return 结果
+     */
+    CommonResponse cancelOrder(String orderNo, String phoneNumber);
 }
