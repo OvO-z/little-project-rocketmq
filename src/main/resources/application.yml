@@ -16,7 +16,7 @@ dubbo:
 
 rocketmq:
   nameserv:
-    address: 139.224.47.231:9867 # 当前部署的服务器的外网ip地址 TODO 每次重新部署时修改
+    address: 101.132.79.234:9867 # 当前部署的服务器的外网ip地址 TODO 每次重新部署时修改
   # 登录消息topic
   login:
     topic: login_notify_topic

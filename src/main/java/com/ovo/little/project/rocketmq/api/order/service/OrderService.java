@@ -26,4 +26,13 @@ public interface OrderService {
      * @return 结果
      */
     CommonResponse cancelOrder(String orderNo, String phoneNumber);
+
+    /**
+     * 支付订单
+     *
+     * @param orderNo     订单号
+     * @param phoneNumber 用户手机号
+     * @return 结果 订单id
+     */
+    Integer informPayOrderSuccessed(String orderNo, String phoneNumber);
 }

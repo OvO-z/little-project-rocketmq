@@ -28,6 +28,9 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+import static com.ovo.little.project.rocketmq.common.constant.RedisKeyConstant.ORDER_LOCK_KEY_PREFIX;
 
 /**
  * @author QAQ
@@ -122,6 +125,73 @@ public class OrderServiceImpl implements OrderService {
         orderEventInformManager.informCancelOrderEvent(orderInfo);
 
         return CommonResponse.success();
+    }
+
+    @Override
+    public Integer informPayOrderSuccessed(String orderNo, String phoneNumber) {
+        OrderInfoDTO orderInfo = null;
+        try {
+            // 获取订单分布式锁防止订单已取消
+            CommonResponse<Boolean> commonResponse = redisApi.lock(ORDER_LOCK_KEY_PREFIX + orderNo,
+                    orderNo,
+                    10L,
+                    TimeUnit.SECONDS,
+                    phoneNumber,
+                    LittleProjectTypeEnum.ROCKETMQ);
+            if (Objects.equals(commonResponse.getCode(), ErrorCodeEnum.SUCCESS.getCode())
+                    && Objects.equals(commonResponse.getData(), Boolean.TRUE)) {
+                // 获取分布式锁成功
+
+                // 订单信息
+                orderInfo = this.getOrderInfo(orderNo, phoneNumber);
+
+                // 判断订单状态是否是待支付
+                if (!Objects.equals(OrderStatusEnum.WAITING_FOR_PAY.getStatus(), orderInfo.getStatus())) {
+                    throw new BusinessException("订单状态不是待支付该订单不可以支付,订单号：" + orderNo);
+                }
+
+                // 修改订单的状态
+                long payTime = System.currentTimeMillis() / 1000;
+                this.updateOrderStatusAndPayTime(orderNo, payTime, phoneNumber);
+
+                // TODO 实际扣减库存 这里酒店数据为下单不扣减库存则不扣减
+
+                // 发送支付通知
+                orderInfo.setPayTime((int) payTime);
+                orderEventInformManager.informPayOrderEvent(orderInfo);
+
+            }
+        } finally {
+            // 释放锁
+            redisApi.unlock(ORDER_LOCK_KEY_PREFIX + orderNo,
+                    orderNo,
+                    phoneNumber,
+                    LittleProjectTypeEnum.ROCKETMQ);
+        }
+        return orderInfo != null ? orderInfo.getId() : null;
+    }
+
+    /**
+     * 更新订单状态和支付时间
+     *
+     * @param orderNo     订单号
+     * @param payTime     支付时间
+     * @param phoneNumber 手机号
+     */
+    private void updateOrderStatusAndPayTime(String orderNo, long payTime, String phoneNumber) {
+        MysqlRequestDTO mysqlRequestDTO = new MysqlRequestDTO();
+        mysqlRequestDTO.setSql("update t_shop_order set status = ?,paytime = ? where ordersn = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(OrderStatusEnum.WAITING_FOR_LIVE.getStatus());
+        params.add(payTime);
+        params.add(orderNo);
+        mysqlRequestDTO.setParams(params);
+        mysqlRequestDTO.setPhoneNumber(phoneNumber);
+        mysqlRequestDTO.setProjectTypeEnum(LittleProjectTypeEnum.ROCKETMQ);
+
+        LOGGER.info("start update order status param:{}", JSON.toJSONString(params));
+        CommonResponse<Integer> response = mysqlApi.update(mysqlRequestDTO);
+        LOGGER.info("end update order status param:{}, response:{}", JSON.toJSONString(params), JSON.toJSONString(response));
     }
 
     /**

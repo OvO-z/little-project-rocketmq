@@ -69,6 +69,12 @@ public class OrderEventInformManagerImpl implements OrderEventInformManager {
                 orderInfoDTO);
     }
 
+    @Override
+    public void informPayOrderEvent(OrderInfoDTO orderInfoDTO) {
+        this.sendOrderMessage(MessageTypeEnum.WX_PAY_ORDER,
+                orderInfoDTO);
+    }
+
     /**
      * 发送订单消息
      *

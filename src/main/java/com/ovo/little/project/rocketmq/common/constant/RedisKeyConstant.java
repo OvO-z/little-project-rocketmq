@@ -17,6 +17,11 @@ public class RedisKeyConstant {
     public static final String HOTEL_ROOM_KEY_PREFIX = "little:project:hotelRoom:";
 
     /**
+     * 订单重复支付
+     */
+    public static final String ORDER_DUPLICATION_KEY_PREFIX = "little:project:payOrderDuplication:";
+
+    /**
      * 订单支付和取消分布式锁key
      */
     public static final String ORDER_LOCK_KEY_PREFIX = "little:project:orderLock:";
